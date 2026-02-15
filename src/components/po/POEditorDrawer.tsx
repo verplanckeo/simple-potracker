@@ -75,13 +75,14 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
     const sanitized: PO = {
       ...local,
       poNumber: local.poNumber.trim(),
-      note: local.note?.trim() || undefined,
+      ...(local.note?.trim() ? { note: local.note.trim() } : {}),
       sessions: local.sessions.map((s) => ({
         ...s,
         units: clampNonNegative(s.units ?? 0),
-        note: s.note?.trim() || undefined,
+        ...(s.note?.trim() ? { note: s.note.trim() } : {}),
       })),
     };
+
     onApply(sanitized);
     onClose();
   }

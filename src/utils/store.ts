@@ -1,6 +1,6 @@
-import type { StoreV1 } from "../types/index.ts";
-import { uid, todayISO, addDaysISO } from "./helpers.ts";
-import type { Training, Customer, Producer, PO, POStatus } from "../types/index.ts";
+import type { StoreV1 } from "../types/index";
+import { uid, todayISO, addDaysISO } from "./helpers";
+import type { Training, Customer, Producer, PO, POStatus } from "../types/index";
 
 const STORAGE_KEY = "po-tracker-store-v1";
 
@@ -41,7 +41,7 @@ export function loadStore(): StoreV1 {
     if (
       !parsed ||
       typeof parsed !== "object" ||
-      (parsed as Record<string, unknown>).version !== 1
+      (parsed as Record<string, unknown>)["version"] !== 1
     ) {
       return seedStore();
     }

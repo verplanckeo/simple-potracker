@@ -25,7 +25,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import PeopleIcon from "@mui/icons-material/People";
 
-import type { Producer, ID } from "../types/index.ts";
+import type { Producer, ID } from "../types/index";
 import { uid, eur, clampNonNegative, parseNumber } from "../utils/helpers";
 
 interface ProducersManagerProps {

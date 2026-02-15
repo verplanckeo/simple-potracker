@@ -391,10 +391,10 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) 
           onApply={(po) => {
             if (drawerMode === "new") {
               onChange({ ...store, pos: [po, ...store.pos] });
-              onToast("PO added to draft", "success");
+              onToast("PO added", "success");
             } else {
               onChange({ ...store, pos: store.pos.map((p) => (p.id === po.id ? po : p)) });
-              onToast("PO updated in draft", "success");
+              onToast("PO updated", "success");
             }
           }}
         />

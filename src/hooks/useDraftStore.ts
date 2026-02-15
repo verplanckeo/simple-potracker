@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { StoreV1 } from "../types/index.ts";
+import type { StoreV1 } from "../types/index";
 import { stableStringify } from "../utils/helpers";
 import { loadStore, saveStore } from "../utils/store";
 

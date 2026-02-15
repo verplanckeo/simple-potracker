@@ -1,0 +1,82 @@
+name: Docker Frontend deployment CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+    paths:
+      - 'app/**'
+
+jobs:
+  build_pr:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: PR Build (no publish)
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Summary
+        run: echo "## ✅ PR build completed (no publish)" >> $GITHUB_STEP_SUMMARY
+        
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: false
+
+      # Step to set up Node.js and install dependencies
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22" # Adjust to your desired version of Node.js
+
+      - name: Install dependencies
+        run: npm install
+
+      # Log in to Azure Container Registry
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: itigaidev.azurecr.io
+          username: ${{ secrets.AZURE_ACR_USERNAME }}
+          password: ${{ secrets.AZURE_ACR_PASSWORD }}
+
+      - name: Build and publish latest version
+        run: npm run publish
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "You can now access the latest version here: [babytracker](https://babytracker.itigai.com)" >> $GITHUB_STEP_SUMMARY

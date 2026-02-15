@@ -16,8 +16,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import type { PO, Producer, POComputed, POStatus } from "../../types/index.ts";
-import { eur, formatDateRange } from "../../utils/helpers.ts";
-import { SortHandle } from "../dnd/SortHandle.tsx";
+import { eur, formatDateRange } from "../../utils/helpers";
+import { SortHandle } from "../dnd/SortHandle";
 
 const STATUS_CHIP_COLOR: Record<POStatus, "default" | "info" | "success"> = {
   draft: "default",
@@ -125,13 +125,20 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
   const prevStatus = useRef(po.status);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
     if (prevStatus.current !== "paid" && po.status === "paid" && rowRef.current) {
       setCelebrating(true);
       spawnConfetti(rowRef.current);
-      const timer = setTimeout(() => setCelebrating(false), 1200);
-      return () => clearTimeout(timer);
+
+      timer = setTimeout(() => setCelebrating(false), 1200);
     }
+
     prevStatus.current = po.status;
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [po.status]);
 
   const style: CSSProperties = {
@@ -150,16 +157,23 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
       ref={setRefs}
       style={style}
       hover
-      sx={celebrating ? {
-        animation: "celebratePulse 0.4s ease-in-out 2",
-        "@keyframes celebratePulse": {
-          "0%, 100%": { backgroundColor: "transparent" },
-          "50%": { backgroundColor: "rgba(76, 175, 80, 0.12)" },
-        },
-      } : undefined}
+      {...(celebrating
+        ? {
+            sx: {
+              animation: "celebratePulse 0.4s ease-in-out 2",
+              "@keyframes celebratePulse": {
+                "0%, 100%": { backgroundColor: "transparent" },
+                "50%": { backgroundColor: "rgba(76, 175, 80, 0.12)" },
+              },
+            },
+          }
+        : {})}
     >
       <TableCell width={56}>
-        <SortHandle listeners={listeners} attributes={attributes} />
+        <SortHandle
+          {...(listeners ? { listeners } : {})}
+          attributes={attributes}
+        />
       </TableCell>
       <TableCell sx={{ fontWeight: 600 }}>{po.poNumber || "(no PO #)"}</TableCell>
       <TableCell>

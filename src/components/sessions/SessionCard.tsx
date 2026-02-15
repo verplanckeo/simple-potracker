@@ -17,7 +17,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import type { Session, Producer, ID } from "../../types/index.ts";
+import type { Session, Producer, ID } from "../../types/index";
 import { eur, clampNonNegative, parseNumber } from "../../utils/helpers";
 import { SortHandle } from "../dnd/SortHandle";
 
@@ -58,7 +58,11 @@ export const SessionCard: FC<SessionCardProps> = ({
       <Stack spacing={1.25}>
         <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1} alignItems="center">
-            <SortHandle listeners={listeners} attributes={attributes} disabled={disableDnd} />
+            <SortHandle
+              {...(listeners ? { listeners } : {})}
+              attributes={attributes}
+              disabled={!!disableDnd}
+            />
             <Typography variant="subtitle2">Session</Typography>
             {session.date ? (
               <Chip size="small" label={session.date} variant="outlined" />

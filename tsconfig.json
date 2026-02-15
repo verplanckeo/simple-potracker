@@ -1,8 +1,15 @@
 // tsconfig.json
 {
   "compilerOptions": {
+    /* Base Configuration */
     "baseUrl": ".",
-    "jsx": "react-jsx",
+    
+    /* Output Configuration */
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declarationDir": "./dist/types",
+    
+    /* Path Aliases */
     "paths": {
       "@/*": ["./src/*"],
       "@/components/*": ["./src/components/*"],
@@ -10,6 +17,49 @@
       "@/types/*": ["./src/types/*"],
       "@/utils/*": ["./src/utils/*"],
       "@/services/*": ["./src/services/*"]
-    }
-  }
+    },
+    
+    /* Language and Environment */
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    
+    /* Type Checking - CRITICAL FOR SAFETY */
+    "strict": true,                              // Enable all strict type checks
+    "noUncheckedIndexedAccess": true,            // Prevents index access bugs
+    "noImplicitReturns": true,                   // All code paths must return
+    "noFallthroughCasesInSwitch": true,          // Switch cases must break
+    "noUnusedLocals": true,                      // Catch unused variables
+    "noUnusedParameters": true,                  // Catch unused function params
+    "allowUnusedLabels": false,                  // Prevent unused labels
+    "exactOptionalPropertyTypes": true,          // Stricter optional props
+    "noImplicitOverride": true,                  // Explicit override keyword
+    "noPropertyAccessFromIndexSignature": true,  // Safer index access
+    
+    /* Import Resolution */
+    "resolveJsonModule": true,                   // Allow JSON imports
+    "esModuleInterop": true,                     // Better CommonJS interop
+    "allowImportingTsExtensions": false,         // CRITICAL: No .ts extensions
+    "allowSyntheticDefaultImports": true,        // Synthetic default imports
+    "forceConsistentCasingInFileNames": true,    // Case-sensitive imports
+    
+    /* Emit */
+    "declaration": true,                         // Generate .d.ts files
+    "declarationMap": true,                      // Source maps for .d.ts
+    "sourceMap": true,                           // Debug source maps
+    "removeComments": false,                     // Keep comments
+    "importHelpers": true,                       // Use tslib helpers
+    "newLine": "lf",                            // Consistent line endings
+    
+    /* Interop Constraints */
+    "isolatedModules": true,                     // Required for Vite
+    "verbatimModuleSyntax": false,               // Allow type imports
+    
+    /* Completeness */
+    "skipLibCheck": true                         // Skip .d.ts checks for speed
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }

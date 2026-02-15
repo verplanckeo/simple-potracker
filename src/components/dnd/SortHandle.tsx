@@ -19,7 +19,7 @@ export const SortHandle: FC<SortHandleProps> = ({ listeners, attributes, disable
           sx={{ cursor: disabled ? "not-allowed" : "grab" }}
           {...(!disabled ? listeners : {})}
           {...(!disabled ? attributes : {})}
-          disabled={disabled}
+          disabled={!!disabled}
         >
           <DragIndicatorIcon fontSize="small" />
         </IconButton>

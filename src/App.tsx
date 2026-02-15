@@ -77,7 +77,7 @@ export default function App(): JSX.Element {
         if (
           !parsed ||
           typeof parsed !== "object" ||
-          (parsed as Record<string, unknown>).version !== 1
+          (parsed as Record<string, unknown>)["version"] !== 1
         ) {
           throw new Error("Unsupported format/version");
         }
