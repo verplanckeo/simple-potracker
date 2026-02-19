@@ -2,11 +2,17 @@ import { JSX, useState } from "react";
 import {
   Alert,
   AppBar,
+  Avatar,
   Badge,
   Box,
   Button,
   Chip,
+  Divider,
   FormControlLabel,
+  IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   Snackbar,
   Stack,
   Switch,
@@ -24,8 +30,13 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SchoolIcon from "@mui/icons-material/School";
 import BusinessIcon from "@mui/icons-material/Business";
 import PeopleIcon from "@mui/icons-material/People";
+import LogoutIcon from "@mui/icons-material/Logout";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { useMsal } from "@azure/msal-react";
+import { Toaster } from "sonner";
 
 import type { StoreV1, ViewKey } from "./types/index";
 import { todayISO } from "./utils/helpers";
@@ -36,7 +47,18 @@ import { ProducersManager } from "./components/ProducersManager";
 
 export default function App(): JSX.Element {
   const { draft, setDraft, dirty, save, discard, autoSave, setAutoSave, saveStatus } = useDraftStore();
+  const { instance, accounts } = useMsal();
   const [view, setView] = useState<ViewKey>("pos");
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const activeAccount = accounts[0];
+  const userName = activeAccount?.name ?? activeAccount?.username ?? "User";
+  const userInitial = userName.charAt(0).toUpperCase();
+
+  function handleLogout(): void {
+    setAnchorEl(null);
+    void instance.logoutRedirect();
+  }
 
   const [toast, setToast] = useState<{
     open: boolean;
@@ -95,14 +117,12 @@ export default function App(): JSX.Element {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
-        <Toolbar>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+        <Toolbar sx={{ gap: 1, px: { xs: 1, sm: 2 } }}>
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
             <ReceiptLongIcon />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1.15 }}>
-                PO Tracker
-              </Typography>
-            </Box>
+            <Typography variant="h6" sx={{ lineHeight: 1.15, display: { xs: "none", sm: "block" } }}>
+              PO Tracker
+            </Typography>
             {autoSave ? (
               saveStatus === "saving" ? (
                 <Chip
@@ -110,7 +130,7 @@ export default function App(): JSX.Element {
                   label="Saving..."
                   size="small"
                   variant="outlined"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 0.5 }}
                 />
               ) : saveStatus === "saved" ? (
                 <Chip
@@ -119,78 +139,120 @@ export default function App(): JSX.Element {
                   color="success"
                   size="small"
                   variant="outlined"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 0.5 }}
                 />
               ) : dirty ? (
-                <Chip label="Editing..." size="small" variant="outlined" sx={{ ml: 1 }} />
+                <Chip label="Editing..." size="small" variant="outlined" sx={{ ml: 0.5 }} />
               ) : (
-                <Chip
-                  icon={<CloudDoneIcon />}
-                  label="All changes saved"
-                  color="success"
-                  size="small"
-                  variant="outlined"
-                  sx={{ ml: 1 }}
-                />
+                <Tooltip title="All changes saved">
+                  <Chip
+                    icon={<CloudDoneIcon />}
+                    label="Saved"
+                    color="success"
+                    size="small"
+                    variant="outlined"
+                    sx={{ ml: 0.5 }}
+                  />
+                </Tooltip>
               )
             ) : dirty ? (
-              <Chip label="Unsaved changes" color="warning" size="small" variant="outlined" sx={{ ml: 1 }} />
+              <Chip label="Unsaved" color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
             ) : (
-              <Chip label="All changes saved" color="success" size="small" variant="outlined" sx={{ ml: 1 }} />
+              <Tooltip title="All changes saved">
+                <Chip label="Saved" color="success" size="small" variant="outlined" sx={{ ml: 0.5 }} />
+              </Tooltip>
             )}
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <FormControlLabel
-              control={
-                <Switch
-                  size="small"
-                  checked={autoSave}
-                  onChange={(_e, checked) => {
-                    setAutoSave(checked);
-                    if (checked && dirty) save();
-                  }}
-                />
-              }
-              label={<Typography variant="caption">Auto save</Typography>}
-              sx={{ mr: 0.5 }}
-            />
-            <Tooltip title="Export JSON">
-              <Button variant="outlined" onClick={exportJson} sx={{ display: { xs: "none", md: "inline-flex" } }}>
-                Export
-              </Button>
-            </Tooltip>
-
-            <Button
-              component="label"
-              variant="outlined"
-              sx={{ display: { xs: "none", md: "inline-flex" } }}
-            >
-              Import
-              <input
-                hidden
-                type="file"
-                accept="application/json"
-                onChange={(e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) importJson(f);
-                  (e.target as HTMLInputElement).value = "";
-                }}
-              />
-            </Button>
-
+          <Stack direction="row" spacing={0.5} alignItems="center">
             {!autoSave && (
               <>
                 <Badge color="warning" variant="dot" invisible={!dirty}>
-                  <Button variant="contained" startIcon={<SaveIcon />} disabled={!dirty} onClick={onSave}>
+                  <Tooltip title="Save">
+                    <span>
+                      <IconButton color="primary" disabled={!dirty} onClick={onSave} size="small" sx={{ display: { sm: "none" } }}>
+                        <SaveIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Button variant="contained" startIcon={<SaveIcon />} disabled={!dirty} onClick={onSave} sx={{ display: { xs: "none", sm: "inline-flex" } }}>
                     Save
                   </Button>
                 </Badge>
-                <Button variant="text" startIcon={<UndoIcon />} disabled={!dirty} onClick={onDiscard}>
+                <Tooltip title="Discard">
+                  <span>
+                    <IconButton disabled={!dirty} onClick={onDiscard} size="small" sx={{ display: { sm: "none" } }}>
+                      <UndoIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Button variant="text" startIcon={<UndoIcon />} disabled={!dirty} onClick={onDiscard} sx={{ display: { xs: "none", sm: "inline-flex" } }}>
                   Discard
                 </Button>
               </>
             )}
+
+            <Tooltip title={userName}>
+              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 1 }}>
+                <Avatar sx={{ width: 32, height: 32, fontSize: 14, bgcolor: "primary.main" }}>
+                  {userInitial}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={() => setAnchorEl(null)}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              <MenuItem disabled>
+                <Typography variant="body2" color="text.secondary">
+                  {activeAccount?.username ?? ""}
+                </Typography>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={() => { setAnchorEl(null); exportJson(); }}>
+                <ListItemIcon><FileDownloadIcon fontSize="small" /></ListItemIcon>
+                Export
+              </MenuItem>
+              <MenuItem component="label">
+                <ListItemIcon><FileUploadIcon fontSize="small" /></ListItemIcon>
+                Import
+                <input
+                  hidden
+                  type="file"
+                  accept="application/json"
+                  onChange={(e) => {
+                    const f = (e.target as HTMLInputElement).files?.[0];
+                    if (f) importJson(f);
+                    (e.target as HTMLInputElement).value = "";
+                    setAnchorEl(null);
+                  }}
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem disableRipple sx={{ "&:hover": { bgcolor: "transparent" } }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={autoSave}
+                      onChange={(_e, checked) => {
+                        setAutoSave(checked);
+                        if (checked && dirty) save();
+                      }}
+                    />
+                  }
+                  label={<Typography variant="body2">Auto save</Typography>}
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+                Sign out
+              </MenuItem>
+            </Menu>
           </Stack>
         </Toolbar>
 
@@ -213,6 +275,7 @@ export default function App(): JSX.Element {
           store={draft}
           onChange={(next) => setDraft(next)}
           onToast={notify}
+          autoSave={autoSave}
         />
       ) : null}
 
@@ -255,6 +318,7 @@ export default function App(): JSX.Element {
           {toast.msg}
         </Alert>
       </Snackbar>
+      <Toaster position="bottom-right" richColors closeButton />
     </Box>
     </LocalizationProvider>
   );

@@ -3,7 +3,7 @@
   "compilerOptions": {
     /* Base Configuration */
     "baseUrl": ".",
-    
+    "types": ["vite/client"],
     /* Output Configuration */
     "outDir": "./dist",
     "rootDir": "./src",

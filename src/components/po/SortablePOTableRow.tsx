@@ -15,7 +15,7 @@ import PaidIcon from "@mui/icons-material/PriceCheck";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import type { PO, Producer, POComputed, POStatus } from "../../types/index.ts";
+import type { PO, Producer, POComputed, POStatus } from "../../types/index";
 import { eur, formatDateRange } from "../../utils/helpers";
 import { SortHandle } from "../dnd/SortHandle";
 

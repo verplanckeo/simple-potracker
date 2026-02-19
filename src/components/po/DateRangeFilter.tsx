@@ -124,8 +124,8 @@ export const DateRangeFilter: FC<DateRangeFilterProps> = ({
   }
 
   return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      <FormControl size="small" sx={{ minWidth: 160 }}>
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", rowGap: 1 }}>
+      <FormControl size="small" sx={{ minWidth: 140 }}>
         <InputLabel id="date-preset-label">Period</InputLabel>
         <Select
           labelId="date-preset-label"
@@ -147,13 +147,13 @@ export const DateRangeFilter: FC<DateRangeFilterProps> = ({
         label="From"
         value={dateFrom ? dayjs(dateFrom) : null}
         onChange={handleFromChange}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 150 } } }}
+        slotProps={{ textField: { size: "small", sx: { minWidth: 130 } } }}
       />
       <DatePicker
         label="To"
         value={dateTo ? dayjs(dateTo) : null}
         onChange={handleToChange}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 150 } } }}
+        slotProps={{ textField: { size: "small", sx: { minWidth: 130 } } }}
       />
     </Stack>
   );

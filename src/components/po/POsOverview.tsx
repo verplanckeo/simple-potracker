@@ -43,15 +43,16 @@ import { uid, addDaysISO, eur, computePO, safeName } from "../../utils/helpers";
 import { SortablePOTableRow } from "./SortablePOTableRow";
 import { POEditorDrawer } from "./POEditorDrawer";
 import { DateRangeFilter } from "./DateRangeFilter";
-import { DuplicateZone } from "../dnd/DuplicateZone";
+
 
 interface POsOverviewProps {
   store: StoreV1;
   onChange: (next: StoreV1) => void;
   onToast: (msg: string, severity?: "success" | "info" | "warning" | "error") => void;
+  autoSave: boolean;
 }
 
-export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) => {
+export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, autoSave }) => {
   const [query, setQuery] = useState("");
   const [customerFilter, setCustomerFilter] = useState<ID | "">("");
   const [trainingFilter, setTrainingFilter] = useState<ID | "">("");
@@ -142,14 +143,6 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) 
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId) return;
 
-    if (overId === "po-duplicate-zone") {
-      const source = store.pos.find((p) => p.id === activeId);
-      if (!source) return;
-      onChange({ ...store, pos: [duplicatePo(source), ...store.pos] });
-      onToast("PO duplicated in draft (+7 days)", "success");
-      return;
-    }
-
     if (activeId === overId) return;
 
     const oldIndex = store.pos.findIndex((x) => x.id === activeId);
@@ -215,84 +208,85 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) 
           <Box>
             <Typography variant="h6">PO overview</Typography>
             <Typography variant="caption" color="text.secondary">
-              Drag rows to reorder. Drop onto the duplicate zone to clone quickly.
+              Drag rows to reorder.
             </Typography>
           </Box>
         </Stack>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
-          <TextField size="small" label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel id="customer-filter">Customer</InputLabel>
-            <Select
-              labelId="customer-filter"
-              label="Customer"
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value as ID | "")}
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {store.customers
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel id="training-filter">Training</InputLabel>
-            <Select
-              labelId="training-filter"
-              label="Training"
-              value={trainingFilter}
-              onChange={(e) => setTrainingFilter(e.target.value as ID | "")}
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {store.trainings
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((t) => (
-                  <MenuItem key={t.id} value={t.id}>
-                    {t.name}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel id="status-filter">Status</InputLabel>
-            <Select
-              labelId="status-filter"
-              label="Status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as POStatus | "")}
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {PO_STATUSES.map((s) => (
-                <MenuItem key={s.value} value={s.value}>
-                  {s.label}
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
+          New PO
+        </Button>
+      </Stack>
+
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+        <TextField size="small" label="Search" value={query} onChange={(e) => setQuery(e.target.value)} sx={{ minWidth: 140, flex: { xs: "1 1 100%", sm: "0 1 auto" } }} />
+        <FormControl size="small" sx={{ minWidth: 150, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
+          <InputLabel id="customer-filter">Customer</InputLabel>
+          <Select
+            labelId="customer-filter"
+            label="Customer"
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value as ID | "")}
+          >
+            <MenuItem value="">
+              <em>All</em>
+            </MenuItem>
+            {store.customers
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.name}
                 </MenuItem>
               ))}
-            </Select>
-          </FormControl>
-          <DateRangeFilter
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onDateFromChange={setDateFrom}
-            onDateToChange={setDateTo}
-          />
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>
-            New PO
-          </Button>
-        </Stack>
-      </Stack>
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 150, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
+          <InputLabel id="training-filter">Training</InputLabel>
+          <Select
+            labelId="training-filter"
+            label="Training"
+            value={trainingFilter}
+            onChange={(e) => setTrainingFilter(e.target.value as ID | "")}
+          >
+            <MenuItem value="">
+              <em>All</em>
+            </MenuItem>
+            {store.trainings
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.name}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 120, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
+          <InputLabel id="status-filter">Status</InputLabel>
+          <Select
+            labelId="status-filter"
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as POStatus | "")}
+          >
+            <MenuItem value="">
+              <em>All</em>
+            </MenuItem>
+            {PO_STATUSES.map((s) => (
+              <MenuItem key={s.value} value={s.value}>
+                {s.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+        />
+      </Box>
 
       <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
@@ -367,14 +361,6 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) 
               </TableBody>
             </Table>
           </TableContainer>
-
-          <Box sx={{ mt: 1.5 }}>
-            <DuplicateZone
-              id="po-duplicate-zone"
-              label="Drop a PO here to create a copy"
-              helper="We'll copy all inputs and shift all session dates by +7 days."
-            />
-          </Box>
         </SortableContext>
       </DndContext>
 
@@ -401,7 +387,9 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast }) 
       ) : null}
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-        All changes are local drafts until you hit "Save" in the top bar.
+        {autoSave
+          ? "All changes are automatically synced to the cloud."
+          : 'All changes are local drafts until you hit "Save" in the top bar.'}
       </Typography>
     </Box>
   );
