@@ -37,6 +37,7 @@ interface SortablePOTableRowProps {
   customerName: string;
   producers: Producer[];
   computed: POComputed;
+  dragDisabled?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -112,6 +113,7 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
   customerName,
   producers,
   computed,
+  dragDisabled,
   onEdit,
   onDelete,
   onDuplicate,
@@ -119,6 +121,7 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: po.id,
+    disabled: !!dragDisabled,
   });
   const rowRef = useRef<HTMLTableRowElement>(null);
   const [celebrating, setCelebrating] = useState(false);
@@ -173,6 +176,7 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
         <SortHandle
           {...(listeners ? { listeners } : {})}
           attributes={attributes}
+          disabled={!!dragDisabled}
         />
       </TableCell>
       <TableCell sx={{ fontWeight: 600 }}>{po.poNumber || "(no PO #)"}</TableCell>

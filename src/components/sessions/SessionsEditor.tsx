@@ -20,7 +20,6 @@ import {
 import type { Session, Producer, ID } from "../../types/index.ts";
 import { uid, todayISO, addDaysISO } from "../../utils/helpers";
 import { SessionCard } from "./SessionCard";
-import { DuplicateZone } from "../dnd/DuplicateZone";
 
 interface SessionsEditorProps {
   sessions: Session[];
@@ -39,18 +38,6 @@ export const SessionsEditor: FC<SessionsEditorProps> = ({ sessions, producerById
     const overId = e.over?.id ? String(e.over.id) : null;
 
     if (!overId) return;
-
-    if (overId === "session-duplicate-zone") {
-      const s = sessions.find((x) => x.id === activeId);
-      if (!s) return;
-      const duplicated: Session = {
-        ...s,
-        id: uid("se"),
-        date: s.date ? addDaysISO(s.date, 7) : s.date,
-      };
-      onChange([...sessions, duplicated]);
-      return;
-    }
 
     if (activeId === overId) return;
 
@@ -113,11 +100,6 @@ export const SessionsEditor: FC<SessionsEditorProps> = ({ sessions, producerById
                 />
               ))}
 
-              <DuplicateZone
-                id="session-duplicate-zone"
-                label="Drop a session here to duplicate it"
-                helper="We'll copy all inputs and shift the date by +7 days (you can edit after)."
-              />
             </Stack>
           </SortableContext>
         </DndContext>

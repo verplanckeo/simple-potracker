@@ -1,13 +1,11 @@
-import { type FC, useState, useMemo } from "react";
+import { type FC, useState, useMemo, useCallback } from "react";
 import {
+  Badge,
   Box,
   Button,
   Chip,
-  FormControl,
-  InputLabel,
-  MenuItem,
+  IconButton,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -15,10 +13,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
+  TableSortLabel,
+  Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import ClearIcon from "@mui/icons-material/Clear";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import {
   DndContext,
@@ -36,14 +39,42 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-import type { StoreV1, PO, ID, POStatus } from "../../types/index";
-import { PO_STATUSES } from "../../types/index";
+import type { StoreV1, PO, ID } from "../../types/index";
 import { uid, addDaysISO, eur, computePO, safeName } from "../../utils/helpers";
+import { usePoSort, type PoSortKey } from "../../hooks/usePoSort";
 
 import { SortablePOTableRow } from "./SortablePOTableRow";
 import { POEditorDrawer } from "./POEditorDrawer";
-import { DateRangeFilter } from "./DateRangeFilter";
+import { POFilterControls, type POFilterValues } from "./POFilterControls";
+import { MobileFilterDrawer } from "./MobileFilterDrawer";
+import { POMobileList } from "./POMobileList";
 
+const EMPTY_FILTERS: POFilterValues = {
+  query: "",
+  customerFilter: [],
+  trainingFilter: [],
+  statusFilter: [],
+  dateFrom: "",
+  dateTo: "",
+};
+
+interface ColumnDef {
+  key: PoSortKey;
+  label: string;
+  align?: "left" | "right";
+  width?: number;
+}
+
+const SORTABLE_COLUMNS: ColumnDef[] = [
+  { key: "poNumber", label: "PO #" },
+  { key: "status", label: "Status" },
+  { key: "training", label: "Training" },
+  { key: "customer", label: "Customer" },
+  { key: "producerCount", label: "Producer(s)" },
+  { key: "sessionCount", label: "Sessions" },
+  { key: "price", label: "Price", align: "right" },
+  { key: "profit", label: "Profit", align: "right" },
+];
 
 interface POsOverviewProps {
   store: StoreV1;
@@ -53,16 +84,30 @@ interface POsOverviewProps {
 }
 
 export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, autoSave }) => {
-  const [query, setQuery] = useState("");
-  const [customerFilter, setCustomerFilter] = useState<ID | "">("");
-  const [trainingFilter, setTrainingFilter] = useState<ID | "">("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [statusFilter, setStatusFilter] = useState<POStatus | "">("");
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
+  const [filters, setFilters] = useState<POFilterValues>(EMPTY_FILTERS);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"new" | "edit">("new");
   const [editingPo, setEditingPo] = useState<PO | null>(null);
+
+  const hasActiveFilters = useMemo((): boolean => {
+    return (
+      filters.query.trim() !== "" ||
+      filters.customerFilter.length > 0 ||
+      filters.trainingFilter.length > 0 ||
+      filters.statusFilter.length > 0 ||
+      filters.dateFrom !== "" ||
+      filters.dateTo !== ""
+    );
+  }, [filters]);
+
+  const clearFilters = useCallback((): void => {
+    setFilters(EMPTY_FILTERS);
+  }, []);
 
   const producerById = useMemo(
     () => new Map(store.producers.map((p) => [p.id, p])),
@@ -94,19 +139,28 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
     return set;
   }, [store.pos, editingPo?.id]);
 
+  const trainingNameById = useCallback(
+    (id: ID | ""): string => safeName(trainingById, id),
+    [trainingById]
+  );
+  const customerNameById = useCallback(
+    (id: ID | ""): string => safeName(customerById, id),
+    [customerById]
+  );
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = filters.query.trim().toLowerCase();
     return store.pos.filter((po) => {
-      if (customerFilter && po.customerId !== customerFilter) return false;
-      if (trainingFilter && po.trainingId !== trainingFilter) return false;
-      if (statusFilter && po.status !== statusFilter) return false;
-      if (dateFrom || dateTo) {
+      if (filters.customerFilter.length > 0 && !filters.customerFilter.includes(po.customerId)) return false;
+      if (filters.trainingFilter.length > 0 && !filters.trainingFilter.includes(po.trainingId)) return false;
+      if (filters.statusFilter.length > 0 && !filters.statusFilter.includes(po.status)) return false;
+      if (filters.dateFrom || filters.dateTo) {
         const c = computedByPoId.get(po.id);
         const poStart = c?.startDate ?? "";
         const poEnd = c?.endDate ?? "";
         if (!poStart && !poEnd) return false;
-        if (dateFrom && poEnd && poEnd < dateFrom) return false;
-        if (dateTo && poStart && poStart > dateTo) return false;
+        if (filters.dateFrom && poEnd && poEnd < filters.dateFrom) return false;
+        if (filters.dateTo && poStart && poStart > filters.dateTo) return false;
       }
       if (!q) return true;
       const trainingName = trainingById.get(po.trainingId)?.name ?? "";
@@ -117,7 +171,14 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
         customerName.toLowerCase().includes(q)
       );
     });
-  }, [store.pos, query, customerFilter, trainingFilter, statusFilter, dateFrom, dateTo, trainingById, customerById, computedByPoId]);
+  }, [store.pos, filters, trainingById, customerById, computedByPoId]);
+
+  const { sortKey, sortDir, sorted, isSorting, toggleSort, setSort, clearSort } = usePoSort({
+    filtered,
+    computedByPoId,
+    trainingNameById,
+    customerNameById,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -139,6 +200,8 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
   }
 
   function onDragEnd(e: DragEndEvent): void {
+    if (isSorting) return;
+
     const activeId = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId) return;
@@ -194,8 +257,19 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
     });
   }
 
+  const activeFilterCount = useMemo((): number => {
+    let count = 0;
+    if (filters.query.trim()) count++;
+    if (filters.customerFilter.length > 0) count++;
+    if (filters.trainingFilter.length > 0) count++;
+    if (filters.statusFilter.length > 0) count++;
+    if (filters.dateFrom || filters.dateTo) count++;
+    return count;
+  }, [filters]);
+
   return (
     <Box sx={{ p: 2 }}>
+      {/* Header */}
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={1.5}
@@ -208,86 +282,77 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
           <Box>
             <Typography variant="h6">PO overview</Typography>
             <Typography variant="caption" color="text.secondary">
-              Drag rows to reorder.
+              {isSorting
+                ? "Sorted by column. Clear sort to drag-reorder."
+                : "Drag rows to reorder."}
             </Typography>
           </Box>
         </Stack>
 
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
-          New PO
-        </Button>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {/* Mobile filter button */}
+          {!isDesktop && (
+            <Badge badgeContent={activeFilterCount} color="primary">
+              <Button
+                variant="outlined"
+                startIcon={<FilterListIcon />}
+                onClick={() => setMobileFilterOpen(true)}
+                size="small"
+              >
+                Filters
+              </Button>
+            </Badge>
+          )}
+
+          {isSorting && (
+            <Tooltip title="Clear sort to re-enable drag reorder">
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ClearIcon />}
+                onClick={clearSort}
+              >
+                Clear sort
+              </Button>
+            </Tooltip>
+          )}
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openNew}
+            sx={{ alignSelf: { xs: "stretch", md: "center" } }}
+          >
+            New PO
+          </Button>
+        </Stack>
       </Stack>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-        <TextField size="small" label="Search" value={query} onChange={(e) => setQuery(e.target.value)} sx={{ minWidth: 140, flex: { xs: "1 1 100%", sm: "0 1 auto" } }} />
-        <FormControl size="small" sx={{ minWidth: 150, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
-          <InputLabel id="customer-filter">Customer</InputLabel>
-          <Select
-            labelId="customer-filter"
-            label="Customer"
-            value={customerFilter}
-            onChange={(e) => setCustomerFilter(e.target.value as ID | "")}
-          >
-            <MenuItem value="">
-              <em>All</em>
-            </MenuItem>
-            {store.customers
-              .slice()
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 150, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
-          <InputLabel id="training-filter">Training</InputLabel>
-          <Select
-            labelId="training-filter"
-            label="Training"
-            value={trainingFilter}
-            onChange={(e) => setTrainingFilter(e.target.value as ID | "")}
-          >
-            <MenuItem value="">
-              <em>All</em>
-            </MenuItem>
-            {store.trainings
-              .slice()
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((t) => (
-                <MenuItem key={t.id} value={t.id}>
-                  {t.name}
-                </MenuItem>
-              ))}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 120, flex: { xs: "1 1 45%", sm: "0 1 auto" } }}>
-          <InputLabel id="status-filter">Status</InputLabel>
-          <Select
-            labelId="status-filter"
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as POStatus | "")}
-          >
-            <MenuItem value="">
-              <em>All</em>
-            </MenuItem>
-            {PO_STATUSES.map((s) => (
-              <MenuItem key={s.value} value={s.value}>
-                {s.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <DateRangeFilter
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateFromChange={setDateFrom}
-          onDateToChange={setDateTo}
-        />
-      </Box>
+      {/* Desktop filters */}
+      {isDesktop && (
+        <Box sx={{ mb: 2 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box sx={{ flex: 1 }}>
+              <POFilterControls
+                values={filters}
+                onChange={setFilters}
+                customers={store.customers}
+                trainings={store.trainings}
+                layout="row"
+              />
+            </Box>
+            {hasActiveFilters && (
+              <Tooltip title="Clear all filters">
+                <IconButton size="small" onClick={clearFilters}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
+        </Box>
+      )}
 
+      {/* Totals bar */}
       <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
@@ -300,70 +365,113 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
         </Stack>
       </Paper>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={store.pos.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell width={56} />
-                  <TableCell>PO #</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Training</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Producer(s)</TableCell>
-                  <TableCell>Sessions</TableCell>
-                  <TableCell align="right">Price</TableCell>
-                  <TableCell align="right">Profit</TableCell>
-                  <TableCell align="right" width={200}>
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filtered.length === 0 ? (
+      {/* Desktop: Table | Mobile: Card list */}
+      {isDesktop ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={store.pos.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={10}>
-                      <Typography variant="body2" color="text.secondary">
-                        No POs match your filters.
-                      </Typography>
+                    <TableCell width={56} />
+                    {SORTABLE_COLUMNS.map((col) => (
+                      <TableCell key={col.key} align={col.align ?? "left"} width={col.width}>
+                        <TableSortLabel
+                          active={sortKey === col.key}
+                          direction={sortKey === col.key ? sortDir : "asc"}
+                          onClick={() => toggleSort(col.key)}
+                        >
+                          {col.label}
+                        </TableSortLabel>
+                      </TableCell>
+                    ))}
+                    <TableCell align="right" width={200}>
+                      Actions
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filtered.map((po) => {
-                    const c = computedByPoId.get(po.id) ?? {
-                      sessionCount: 0,
-                      startDate: "",
-                      endDate: "",
-                      price: 0,
-                      profit: 0,
-                      producerIds: [],
-                    };
-                    return (
-                      <SortablePOTableRow
-                        key={po.id}
-                        po={po}
-                        trainingName={safeName(trainingById, po.trainingId)}
-                        customerName={safeName(customerById, po.customerId)}
-                        producers={store.producers}
-                        computed={c}
-                        onEdit={() => openEdit(po)}
-                        onDelete={() => removePo(po.id)}
-                        onMarkPaid={() => markPaid(po.id)}
-                        onDuplicate={() => {
-                          onChange({ ...store, pos: [duplicatePo(po), ...store.pos] });
-                          onToast("PO duplicated in draft (+7 days)", "success");
-                        }}
-                      />
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </SortableContext>
-      </DndContext>
+                </TableHead>
+                <TableBody>
+                  {sorted.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10}>
+                        <Typography variant="body2" color="text.secondary">
+                          No POs match your filters.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sorted.map((po) => {
+                      const c = computedByPoId.get(po.id) ?? {
+                        sessionCount: 0,
+                        startDate: "",
+                        endDate: "",
+                        price: 0,
+                        profit: 0,
+                        producerIds: [],
+                      };
+                      return (
+                        <SortablePOTableRow
+                          key={po.id}
+                          po={po}
+                          trainingName={safeName(trainingById, po.trainingId)}
+                          customerName={safeName(customerById, po.customerId)}
+                          producers={store.producers}
+                          computed={c}
+                          dragDisabled={isSorting}
+                          onEdit={() => openEdit(po)}
+                          onDelete={() => removePo(po.id)}
+                          onMarkPaid={() => markPaid(po.id)}
+                          onDuplicate={() => {
+                            onChange({ ...store, pos: [duplicatePo(po), ...store.pos] });
+                            onToast("PO duplicated in draft (+7 days)", "success");
+                          }}
+                        />
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <POMobileList
+          sorted={sorted}
+          allPoIds={store.pos.map((p) => p.id)}
+          producers={store.producers}
+          computedByPoId={computedByPoId}
+          trainingById={trainingById}
+          customerById={customerById}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSetSort={setSort}
+          isSorting={isSorting}
+          onDragEnd={onDragEnd}
+          onEdit={openEdit}
+          onDelete={removePo}
+          onMarkPaid={markPaid}
+          onDuplicate={(po) => {
+            onChange({ ...store, pos: [duplicatePo(po), ...store.pos] });
+            onToast("PO duplicated in draft (+7 days)", "success");
+          }}
+        />
+      )}
 
+      {/* Mobile filter drawer */}
+      {!isDesktop && (
+        <MobileFilterDrawer
+          open={mobileFilterOpen}
+          onClose={() => setMobileFilterOpen(false)}
+          values={filters}
+          onChange={setFilters}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          customers={store.customers}
+          trainings={store.trainings}
+        />
+      )}
+
+      {/* PO editor drawer */}
       {editingPo ? (
         <POEditorDrawer
           existingPoNumbers={existingPoNumbers}
