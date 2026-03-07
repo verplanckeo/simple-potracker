@@ -97,7 +97,7 @@ export function usePoSort({
           cmp = (ca?.sessionCount ?? 0) - (cb?.sessionCount ?? 0);
           break;
         case "price":
-          cmp = (ca?.price ?? 0) - (cb?.price ?? 0);
+          cmp = (a.price ?? 0) - (b.price ?? 0);
           break;
         case "profit":
           cmp = (ca?.profit ?? 0) - (cb?.profit ?? 0);

@@ -17,6 +17,9 @@ import {
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 
 import type { PO, Training, Customer, Producer, ID, POStatus } from "../../types/index";
 import { PO_STATUSES } from "../../types/index";
@@ -75,6 +78,7 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
     const sanitized: PO = {
       ...local,
       poNumber: local.poNumber.trim(),
+      price: clampNonNegative(local.price ?? 0),
       ...(local.note?.trim() ? { note: local.note.trim() } : {}),
       sessions: local.sessions.map((s) => ({
         ...s,
@@ -186,6 +190,16 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
           </Stack>
 
           <TextField
+            label="PO price (€)"
+            type="number"
+            value={local.price ?? 0}
+            onChange={(e) => setLocal((p) => ({ ...p, price: Math.max(0, Number(e.target.value) || 0) }))}
+            fullWidth
+            inputProps={{ min: 0, step: "any" }}
+            helperText="Manually entered invoice price for this PO"
+          />
+
+          <TextField
             label="PO note (optional)"
             value={local.note ?? ""}
             onChange={(e) => setLocal((p) => ({ ...p, note: e.target.value }))}
@@ -221,15 +235,37 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">
-                    Price
+                    PO Price
                   </Typography>
-                  <Typography variant="h6">{eur.format(computed.price)}</Typography>
+                  <Typography variant="h6">{eur.format(local.price ?? 0)}</Typography>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Producer Cost
+                  </Typography>
+                  <Typography variant="h6">{eur.format(computed.cost)}</Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     Profit
                   </Typography>
-                  <Typography variant="h6">{eur.format(computed.profit)}</Typography>
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    {computed.profit > 0 && <TrendingUpIcon color="success" />}
+                    {computed.profit < 0 && <TrendingDownIcon color="error" />}
+                    {computed.profit === 0 && <TrendingFlatIcon color="disabled" />}
+                    <Typography
+                      variant="h6"
+                      color={
+                        computed.profit > 0
+                          ? "success.main"
+                          : computed.profit < 0
+                            ? "error.main"
+                            : "text.secondary"
+                      }
+                    >
+                      {eur.format(computed.profit)}
+                    </Typography>
+                  </Stack>
                 </Box>
               </Stack>
             </Stack>

@@ -6,12 +6,48 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "docker-build": "docker build -t simplepotracker:latest -t itigaidev.azurecr.io/simplepotracker:latest .",
+    "docker-build": "npm run prebuild:production && docker build -t simplepotracker:latest -t itigaidev.azurecr.io/simplepotracker:latest .",
     "docker-push": "docker push itigaidev.azurecr.io/simplepotracker:latest",
     "docker-run": "docker run -p 8080:80 simplepotracker",
-    "publish": "npm run build && npm run docker-build && npm run docker-push",
+    "publish": "npm run docker-build && npm run docker-push",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prebuild:local": "copy-files-from-to --mode local --verbose",
+    "prebuild:production": "copy-files-from-to --mode production --verbose"
+  },
+  "copyFiles": [
+    {
+      "from": {
+        "default": {
+          "skip": true
+        },
+        "local": "env-local",
+        "production": "env-production"
+      },
+      "to": {
+        "default": {
+          "skip": true
+        },
+        "local": ".env.development",
+        "production": ".env.production"
+      }
+    }
+  ],
+  "copyFilesSettings": {
+    "whenFileExists": "overwrite",
+    "addReferenceToSourceOfOrigin": false,
+    "ignoreDotFilesAndFolders": true,
+    "removeSourceMappingURL": false,
+    "minifyJs": true,
+    "minifyJsTerserOptions": {
+      "compress": {
+        "sequences": false
+      },
+      "mangle": false,
+      "format": {
+        "semicolons": false
+      }
+    }
   },
   "dependencies": {
     "@azure/core-auth": "^1.10.1",
@@ -40,6 +76,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "copy-files-from-to": "^3.11.0",
     "autoprefixer": "^10.4.24",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",

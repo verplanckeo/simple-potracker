@@ -1,0 +1,6 @@
+# Azure AD / MSAL Configuration
+VITE_AZURE_CLIENT_ID=2bcf79d9-f3f3-4142-bcd9-cdc362d171e5
+VITE_AZURE_TENANT_ID=47e6164c-4a45-4332-a3cf-fa95950a55e0
+VITE_API_SCOPE=api://2bcf79d9-f3f3-4142-bcd9-cdc362d171e5/user_imporsonation
+VITE_STORAGE_ACCOUNT_NAME=sapotrackereuwdev
+VITE_TABLE_NAME=simplepotracker

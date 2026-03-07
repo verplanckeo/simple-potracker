@@ -39,6 +39,7 @@ export interface PO {
   trainingId: ID | "";
   customerId: ID | "";
   status: POStatus;
+  price: number;
   sessions: Session[];
   note?: string;
 }
@@ -55,7 +56,7 @@ export interface POComputed {
   sessionCount: number;
   startDate: string;
   endDate: string;
-  price: number;
+  cost: number;
   profit: number;
   producerIds: ID[];
 }

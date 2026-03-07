@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import type { StoreV1 } from "../types/index";
 import { stableStringify } from "../utils/helpers";
 import { loadStore, saveStore } from "../utils/store";
-import { saveToCloud, loadFromCloud, classifyCloudError } from "../services/tableStorageService";
+import { saveToCloud, loadFromCloud, classifyCloudError, isAuthError } from "../services/tableStorageService";
+import { loginRequest } from "../authConfig";
 
 type SaveStatus = "idle" | "saving" | "saved";
 
@@ -86,6 +87,17 @@ export function useDraftStore(): DraftStore {
         toast.dismiss(slowToastId);
       }
 
+      if (isAuthError(error)) {
+        toast.error("Session expired", {
+          description: "Redirecting to login...",
+          duration: 3000,
+        });
+        setTimeout(() => {
+          void instance.loginRedirect(loginRequest);
+        }, 1500);
+        return;
+      }
+
       const message = classifyCloudError(error);
       toast.error("Failed to sync to cloud", {
         description: message,
@@ -152,8 +164,19 @@ export function useDraftStore(): DraftStore {
           setPersisted(result.store);
           saveStore(result.store);
         }
-      } catch {
-        // Silently fail on initial load — localStorage is the fallback
+      } catch (error: unknown) {
+        if (cancelled) return;
+        if (isAuthError(error)) {
+          toast.error("Session expired", {
+            description: "Redirecting to login...",
+            duration: 3000,
+          });
+          setTimeout(() => {
+            void instance.loginRedirect(loginRequest);
+          }, 1500);
+          return;
+        }
+        // Silently fail on other errors — localStorage is the fallback
       }
     }
 

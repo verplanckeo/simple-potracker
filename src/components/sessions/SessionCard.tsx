@@ -50,8 +50,7 @@ export const SessionCard: FC<SessionCardProps> = ({
 
   const producer = session.producerId ? producerById.get(session.producerId) : undefined;
   const units = clampNonNegative(session.units ?? 0);
-  const price = producer ? units * (producer.rate + producer.markup) : 0;
-  const profit = producer ? units * producer.markup : 0;
+  const cost = producer ? units * (producer.rate + producer.markup) : 0;
 
   return (
     <Paper ref={setNodeRef} style={style} variant="outlined" sx={{ p: 1.5 }}>
@@ -132,15 +131,12 @@ export const SessionCard: FC<SessionCardProps> = ({
             onChange={(e) => onChange({ ...session, note: e.target.value })}
             fullWidth
           />
-          <Paper variant="outlined" sx={{ p: 1.25, minWidth: { sm: 240 } }}>
+          <Paper variant="outlined" sx={{ p: 1.25, minWidth: { sm: 180 } }}>
             <Typography variant="caption" color="text.secondary">
-              Pricing
+              Producer Cost
             </Typography>
             <Typography variant="subtitle2">
-              Price: <strong>{eur.format(price)}</strong>
-            </Typography>
-            <Typography variant="subtitle2">
-              Profit: <strong>{eur.format(profit)}</strong>
+              <strong>{eur.format(cost)}</strong>
             </Typography>
           </Paper>
         </Stack>

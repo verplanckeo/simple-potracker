@@ -12,6 +12,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PaidIcon from "@mui/icons-material/PriceCheck";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -211,13 +214,28 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
       </TableCell>
       <TableCell align="right">
         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          {eur.format(computed.price)}
+          {eur.format(po.price)}
         </Typography>
       </TableCell>
       <TableCell align="right">
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          {eur.format(computed.profit)}
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={0.5}>
+          {computed.profit > 0 && <TrendingUpIcon fontSize="small" color="success" />}
+          {computed.profit < 0 && <TrendingDownIcon fontSize="small" color="error" />}
+          {computed.profit === 0 && <TrendingFlatIcon fontSize="small" color="disabled" />}
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 700 }}
+            color={
+              computed.profit > 0
+                ? "success.main"
+                : computed.profit < 0
+                  ? "error.main"
+                  : "text.secondary"
+            }
+          >
+            {eur.format(computed.profit)}
+          </Typography>
+        </Stack>
       </TableCell>
       <TableCell align="right" width={200}>
         {po.status !== "paid" && (

@@ -145,7 +145,7 @@ export const POMobileList: FC<POMobileListProps> = ({
                 sessionCount: 0,
                 startDate: "",
                 endDate: "",
-                price: 0,
+                cost: 0,
                 profit: 0,
                 producerIds: [] as ID[],
               };

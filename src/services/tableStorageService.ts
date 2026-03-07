@@ -22,6 +22,14 @@ const ROW_KEY = "store-v1";
 const MAX_PROPERTY_SIZE = 32_000;
 const STORAGE_SCOPES = ["https://storage.azure.com/user_impersonation"];
 
+/** Thrown when token acquisition fails and the user must re-authenticate. */
+export class AuthExpiredError extends Error {
+  constructor() {
+    super("Your session has expired. Redirecting to login...");
+    this.name = "AuthExpiredError";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // User identity
 // ---------------------------------------------------------------------------
@@ -67,11 +75,16 @@ async function getStorageToken(instance: IPublicClientApplication): Promise<stri
     return response.accessToken;
   } catch (error: unknown) {
     if (error instanceof InteractionRequiredAuthError) {
-      const response = await instance.acquireTokenPopup({
-        scopes: STORAGE_SCOPES,
-        account,
-      });
-      return response.accessToken;
+      try {
+        const response = await instance.acquireTokenPopup({
+          scopes: STORAGE_SCOPES,
+          account,
+        });
+        return response.accessToken;
+      } catch {
+        // Popup also failed — session is fully expired
+        throw new AuthExpiredError();
+      }
     }
     throw error;
   }
@@ -192,25 +205,29 @@ export async function loadFromCloud(
 // Error classification
 // ---------------------------------------------------------------------------
 
-export function classifyCloudError(error: unknown): string {
+export function isAuthError(error: unknown): boolean {
+  if (error instanceof AuthExpiredError) return true;
+  if (error instanceof InteractionRequiredAuthError) return true;
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
+    if (msg.includes("authentication expired") || msg.includes("log in again")) return true;
+    if (msg.includes("no authenticated account")) return true;
+  }
+  if (error && typeof error === "object" && "statusCode" in error) {
+    const status = (error as { statusCode: number }).statusCode;
+    if (status === 401 || status === 403) return true;
+  }
+  return false;
+}
 
-    if (msg.includes("authentication expired") || msg.includes("log in again")) {
-      return "Authentication expired. Please log in again.";
-    }
+export function classifyCloudError(error: unknown): string {
+  if (isAuthError(error)) {
+    return "Session expired. Redirecting to login...";
+  }
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
     if (msg.includes("network") || msg.includes("fetch") || msg.includes("failed to fetch")) {
       return "Network error. Changes saved locally.";
-    }
-    if (
-      error &&
-      typeof error === "object" &&
-      "statusCode" in error
-    ) {
-      const status = (error as { statusCode: number }).statusCode;
-      if (status === 401 || status === 403) {
-        return "Permission denied. Contact administrator.";
-      }
     }
     return `Sync failed: ${error.message}`;
   }

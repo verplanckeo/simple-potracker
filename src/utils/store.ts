@@ -9,7 +9,7 @@ function seedStore(): StoreV1 {
   const t2: Training = { id: uid("tr"), name: "AI in the workplace" };
   const c1: Customer = { id: uid("cu"), name: "Essity" };
   const c2: Customer = { id: uid("cu"), name: "Nestlé" };
-  const p1: Producer = { id: uid("pr"), name: "Alex Johnson", rate: 650, markup: 150 };
+  const p1: Producer = { id: uid("pr"), name: "John Wick", rate: 650, markup: 150 };
   const p2: Producer = { id: uid("pr"), name: "Samira El Amrani", rate: 600, markup: 200 };
 
   const po1: PO = {
@@ -18,6 +18,7 @@ function seedStore(): StoreV1 {
     trainingId: t2.id,
     customerId: c1.id,
     status: "draft",
+    price: 0,
     sessions: [
       { id: uid("se"), date: addDaysISO(todayISO(), 7), producerId: p1.id, units: 1 },
       { id: uid("se"), date: addDaysISO(todayISO(), 14), producerId: p1.id, units: 1 },

@@ -221,7 +221,7 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
     for (const po of filtered) {
       const c = computedByPoId.get(po.id);
       if (!c) continue;
-      price += c.price;
+      price += po.price;
       profit += c.profit;
     }
     return { price, profit };
@@ -235,6 +235,7 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
       trainingId: "",
       customerId: "",
       status: "draft",
+      price: 0,
       sessions: [],
     });
     setDrawerOpen(true);
@@ -405,7 +406,7 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
                         sessionCount: 0,
                         startDate: "",
                         endDate: "",
-                        price: 0,
+                        cost: 0,
                         profit: 0,
                         producerIds: [],
                       };

@@ -18,6 +18,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PaidIcon from "@mui/icons-material/PriceCheck";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -161,11 +164,26 @@ export const SortablePOCard: FC<SortablePOCardProps> = ({
           </Box>
           <Stack alignItems="flex-end" sx={{ flexShrink: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              {eur.format(computed.price)}
+              {eur.format(po.price)}
             </Typography>
-            <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
-              {eur.format(computed.profit)} profit
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.25}>
+              {computed.profit > 0 && <TrendingUpIcon sx={{ fontSize: 14 }} color="success" />}
+              {computed.profit < 0 && <TrendingDownIcon sx={{ fontSize: 14 }} color="error" />}
+              {computed.profit === 0 && <TrendingFlatIcon sx={{ fontSize: 14 }} color="disabled" />}
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 600 }}
+                color={
+                  computed.profit > 0
+                    ? "success.main"
+                    : computed.profit < 0
+                      ? "error.main"
+                      : "text.secondary"
+                }
+              >
+                {eur.format(computed.profit)} profit
+              </Typography>
+            </Stack>
           </Stack>
         </Stack>
       </CardContent>

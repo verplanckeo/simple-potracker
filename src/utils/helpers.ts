@@ -67,8 +67,7 @@ export function computePO(po: PO, producerById: Map<ID, Producer>): POComputed {
   const startDate = dates[0] ?? "";
   const endDate = dates[dates.length - 1] ?? "";
 
-  let price = 0;
-  let profit = 0;
+  let cost = 0;
   const producerIdsSet = new Set<ID>();
 
   for (const s of po.sessions) {
@@ -76,16 +75,17 @@ export function computePO(po: PO, producerById: Map<ID, Producer>): POComputed {
     const pr = producerById.get(s.producerId);
     if (!pr) continue;
     const units = clampNonNegative(s.units ?? 0);
-    price += units * (clampNonNegative(pr.rate) + clampNonNegative(pr.markup));
-    profit += units * clampNonNegative(pr.markup);
+    cost += units * (clampNonNegative(pr.rate) + clampNonNegative(pr.markup));
     producerIdsSet.add(pr.id);
   }
+
+  const profit = (po.price ?? 0) - cost;
 
   return {
     sessionCount: po.sessions.length,
     startDate,
     endDate,
-    price,
+    cost,
     profit,
     producerIds: Array.from(producerIdsSet),
   };
