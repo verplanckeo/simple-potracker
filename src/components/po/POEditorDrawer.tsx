@@ -121,6 +121,7 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
               label="PO number"
               value={local.poNumber}
               onChange={(e) => setLocal((p) => ({ ...p, poNumber: e.target.value }))}
+              onFocus={(e) => e.target.select()}
               fullWidth
               error={isDuplicatePoNumber}
               helperText={isDuplicatePoNumber ? "This PO number already exists" : "Unique identifier (e.g., PO-2026-014)"}
@@ -194,6 +195,7 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
             type="number"
             value={local.price ?? 0}
             onChange={(e) => setLocal((p) => ({ ...p, price: Math.max(0, Number(e.target.value) || 0) }))}
+            onFocus={(e) => e.target.select()}
             fullWidth
             inputProps={{ min: 0, step: "any" }}
             helperText="Manually entered invoice price for this PO"
@@ -203,6 +205,7 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
             label="PO note (optional)"
             value={local.note ?? ""}
             onChange={(e) => setLocal((p) => ({ ...p, note: e.target.value }))}
+            onFocus={(e) => e.target.select()}
             fullWidth
           />
 

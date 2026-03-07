@@ -10,11 +10,20 @@ export interface Customer {
   name: string;
 }
 
+export interface RateEntry {
+  id: ID;
+  rate: number;
+  markup: number;
+  effectiveFrom: string;
+  lastModified: string;
+}
+
 export interface Producer {
   id: ID;
   name: string;
   rate: number;
   markup: number;
+  rateHistory: RateEntry[];
 }
 
 export interface Session {
@@ -22,6 +31,8 @@ export interface Session {
   date: string;
   producerId: ID | "";
   units: number;
+  rate: number;
+  markup: number;
   note?: string;
 }
 

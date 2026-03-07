@@ -61,7 +61,7 @@ export const SessionsEditor: FC<SessionsEditorProps> = ({ sessions, producerById
             onClick={() => {
               onChange([
                 ...sessions,
-                { id: uid("se"), date: todayISO(), producerId: "", units: 1 },
+                { id: uid("se"), date: todayISO(), producerId: "", units: 1, rate: 0, markup: 0 },
               ]);
             }}
           >

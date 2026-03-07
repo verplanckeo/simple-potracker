@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { type FC, useState } from "react";
 import {
   FormControl,
   InputLabel,
@@ -83,6 +83,7 @@ interface DateRangeFilterProps {
   dateTo: string;
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
+  layout?: "row" | "column";
 }
 
 export const DateRangeFilter: FC<DateRangeFilterProps> = ({
@@ -90,8 +91,10 @@ export const DateRangeFilter: FC<DateRangeFilterProps> = ({
   dateTo,
   onDateFromChange,
   onDateToChange,
+  layout = "row",
 }) => {
   const [selectedPreset, setSelectedPreset] = useState("");
+  const isColumn = layout === "column";
 
   function handlePresetChange(e: SelectChangeEvent<string>): void {
     const key = e.target.value;
@@ -124,8 +127,12 @@ export const DateRangeFilter: FC<DateRangeFilterProps> = ({
   }
 
   return (
-    <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", rowGap: 1 }}>
-      <FormControl size="small" sx={{ minWidth: 140 }}>
+    <Stack
+      direction={isColumn ? "column" : "row"}
+      spacing={1}
+      {...(isColumn ? {} : { alignItems: "center", sx: { flexWrap: "wrap", rowGap: 1 } })}
+    >
+      <FormControl size="small" sx={{ minWidth: isColumn ? 0 : 140 }} fullWidth={isColumn}>
         <InputLabel id="date-preset-label">Period</InputLabel>
         <Select
           labelId="date-preset-label"
@@ -147,13 +154,13 @@ export const DateRangeFilter: FC<DateRangeFilterProps> = ({
         label="From"
         value={dateFrom ? dayjs(dateFrom) : null}
         onChange={handleFromChange}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 130 } } }}
+        slotProps={{ textField: { size: "small", fullWidth: isColumn, ...(isColumn ? {} : { sx: { minWidth: 130 } }) } }}
       />
       <DatePicker
         label="To"
         value={dateTo ? dayjs(dateTo) : null}
         onChange={handleToChange}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 130 } } }}
+        slotProps={{ textField: { size: "small", fullWidth: isColumn, ...(isColumn ? {} : { sx: { minWidth: 130 } }) } }}
       />
     </Stack>
   );

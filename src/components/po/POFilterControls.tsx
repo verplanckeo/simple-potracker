@@ -167,6 +167,7 @@ export const POFilterControls: FC<POFilterControlsProps> = ({
         dateTo={values.dateTo}
         onDateFromChange={(v) => onChange({ ...values, dateFrom: v })}
         onDateToChange={(v) => onChange({ ...values, dateTo: v })}
+        layout={layout}
       />
     </Stack>
   );

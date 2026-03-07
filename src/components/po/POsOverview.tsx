@@ -4,6 +4,11 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   Paper,
   Stack,
@@ -20,6 +25,7 @@ import {
   useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import CalculateIcon from "@mui/icons-material/Calculate";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -40,7 +46,7 @@ import {
 } from "@dnd-kit/sortable";
 
 import type { StoreV1, PO, ID } from "../../types/index";
-import { uid, addDaysISO, eur, computePO, safeName } from "../../utils/helpers";
+import { uid, addDaysISO, eur, computePO, safeName, recalculateAllSessions } from "../../utils/helpers";
 import { usePoSort, type PoSortKey } from "../../hooks/usePoSort";
 
 import { SortablePOTableRow } from "./SortablePOTableRow";
@@ -93,6 +99,7 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"new" | "edit">("new");
   const [editingPo, setEditingPo] = useState<PO | null>(null);
+  const [recalcDialogOpen, setRecalcDialogOpen] = useState(false);
 
   const hasActiveFilters = useMemo((): boolean => {
     return (
@@ -319,6 +326,15 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
           )}
 
           <Button
+            variant="outlined"
+            size="small"
+            startIcon={<CalculateIcon />}
+            onClick={() => setRecalcDialogOpen(true)}
+          >
+            Recalculate
+          </Button>
+
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={openNew}
@@ -361,7 +377,11 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
           </Typography>
           <Stack direction="row" spacing={2}>
             <Chip label={`Total price: ${eur.format(totals.price)}`} variant="outlined" />
-            <Chip label={`Total profit: ${eur.format(totals.profit)}`} color="success" variant="outlined" />
+            <Chip
+              label={`Total profit: ${eur.format(totals.profit)}`}
+              color={totals.profit > 0 ? "success" : totals.profit < 0 ? "error" : "default"}
+              variant="outlined"
+            />
           </Stack>
         </Stack>
       </Paper>
@@ -494,6 +514,38 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
           }}
         />
       ) : null}
+
+      {/* Recalculate confirmation dialog */}
+      <Dialog open={recalcDialogOpen} onClose={() => setRecalcDialogOpen(false)}>
+        <DialogTitle>Recalculate all session rates?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will update the rate and markup on every session to match the
+            producer&apos;s rate history for that session&apos;s date. This action
+            cannot be undone. Sessions without a date or producer will be skipped.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRecalcDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setRecalcDialogOpen(false);
+              const { nextStore, result } = recalculateAllSessions(store);
+              onChange(nextStore);
+              onToast(
+                result.updatedSessions > 0
+                  ? `Recalculated: ${result.updatedSessions} session(s) updated across ${result.updatedPOs} PO(s)`
+                  : "All sessions already up to date",
+                result.updatedSessions > 0 ? "success" : "info",
+              );
+            }}
+          >
+            Recalculate
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
         {autoSave

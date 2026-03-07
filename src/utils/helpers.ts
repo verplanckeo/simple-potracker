@@ -1,4 +1,4 @@
-import type { ID, PO, POComputed, Producer } from "../types/index.ts";
+import type { ID, PO, POComputed, Producer, RateEntry, StoreV1 } from "../types/index";
 
 export function uid(prefix = "id"): ID {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -59,7 +59,7 @@ export function parseNumber(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function computePO(po: PO, producerById: Map<ID, Producer>): POComputed {
+export function computePO(po: PO, _producerById: Map<ID, Producer>): POComputed {
   const dates = po.sessions
     .map((s) => s.date)
     .filter(Boolean)
@@ -72,11 +72,10 @@ export function computePO(po: PO, producerById: Map<ID, Producer>): POComputed {
 
   for (const s of po.sessions) {
     if (!s.producerId) continue;
-    const pr = producerById.get(s.producerId);
-    if (!pr) continue;
     const units = clampNonNegative(s.units ?? 0);
-    cost += units * (clampNonNegative(pr.rate) + clampNonNegative(pr.markup));
-    producerIdsSet.add(pr.id);
+    // Rate and markup are snapshotted on the session at producer-assignment time
+    cost += units * (clampNonNegative(s.rate ?? 0) + clampNonNegative(s.markup ?? 0));
+    producerIdsSet.add(s.producerId);
   }
 
   const profit = (po.price ?? 0) - cost;
@@ -102,4 +101,63 @@ export function formatDateRange(start: string, end: string): string {
 export function safeName(map: Map<ID, { name: string }>, id: ID | ""): string {
   if (!id) return "\u2014";
   return map.get(id)?.name ?? "(missing)";
+}
+
+export function nowISO(): string {
+  return new Date().toISOString();
+}
+
+export function findActiveRate(rateHistory: RateEntry[], date: string): RateEntry | undefined {
+  if (rateHistory.length === 0) return undefined;
+  const sorted = [...rateHistory].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  for (const entry of sorted) {
+    if (entry.effectiveFrom <= date) return entry;
+  }
+  return sorted[sorted.length - 1];
+}
+
+export function currentRate(rateHistory: RateEntry[]): RateEntry | undefined {
+  if (rateHistory.length === 0) return undefined;
+  return [...rateHistory].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+}
+
+export interface RecalculateResult {
+  updatedSessions: number;
+  updatedPOs: number;
+  skippedNoDate: number;
+  skippedNoProducer: number;
+}
+
+export function recalculateAllSessions(
+  store: StoreV1,
+): { nextStore: StoreV1; result: RecalculateResult } {
+  const producerById = new Map(store.producers.map((p) => [p.id, p]));
+  let updatedSessions = 0;
+  let updatedPOCount = 0;
+  let skippedNoDate = 0;
+  let skippedNoProducer = 0;
+
+  const pos = store.pos.map((po) => {
+    let poChanged = false;
+    const sessions = po.sessions.map((s) => {
+      if (!s.date) { skippedNoDate++; return s; }
+      if (!s.producerId) { skippedNoProducer++; return s; }
+      const producer = producerById.get(s.producerId);
+      if (!producer) { skippedNoProducer++; return s; }
+      const entry = findActiveRate(producer.rateHistory, s.date);
+      const newRate = entry?.rate ?? producer.rate;
+      const newMarkup = entry?.markup ?? producer.markup;
+      if (s.rate === newRate && s.markup === newMarkup) return s;
+      poChanged = true;
+      updatedSessions++;
+      return { ...s, rate: newRate, markup: newMarkup };
+    });
+    if (poChanged) updatedPOCount++;
+    return poChanged ? { ...po, sessions } : po;
+  });
+
+  return {
+    nextStore: { ...store, pos },
+    result: { updatedSessions, updatedPOs: updatedPOCount, skippedNoDate, skippedNoProducer },
+  };
 }

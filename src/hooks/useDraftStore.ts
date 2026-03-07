@@ -4,7 +4,7 @@ import { useMsal } from "@azure/msal-react";
 import { toast } from "sonner";
 import type { StoreV1 } from "../types/index";
 import { stableStringify } from "../utils/helpers";
-import { loadStore, saveStore } from "../utils/store";
+import { loadStore, saveStore, migrateStore } from "../utils/store";
 import { saveToCloud, loadFromCloud, classifyCloudError, isAuthError } from "../services/tableStorageService";
 import { loginRequest } from "../authConfig";
 
@@ -160,9 +160,10 @@ export function useDraftStore(): DraftStore {
         const cloudJson = stableStringify(result.store);
 
         if (localJson !== cloudJson) {
-          setDraft(result.store);
-          setPersisted(result.store);
-          saveStore(result.store);
+          const migrated = migrateStore(result.store);
+          setDraft(migrated);
+          setPersisted(migrated);
+          saveStore(migrated);
         }
       } catch (error: unknown) {
         if (cancelled) return;

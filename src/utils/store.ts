@@ -1,6 +1,5 @@
-import type { StoreV1 } from "../types/index";
-import { uid, todayISO, addDaysISO } from "./helpers";
-import type { Training, Customer, Producer, PO, POStatus } from "../types/index";
+import type { StoreV1, Training, Customer, Producer, PO, POStatus } from "../types/index";
+import { uid, todayISO, addDaysISO, nowISO } from "./helpers";
 
 const STORAGE_KEY = "po-tracker-store-v1";
 
@@ -9,8 +8,14 @@ function seedStore(): StoreV1 {
   const t2: Training = { id: uid("tr"), name: "AI in the workplace" };
   const c1: Customer = { id: uid("cu"), name: "Essity" };
   const c2: Customer = { id: uid("cu"), name: "Nestlé" };
-  const p1: Producer = { id: uid("pr"), name: "John Wick", rate: 650, markup: 150 };
-  const p2: Producer = { id: uid("pr"), name: "Samira El Amrani", rate: 600, markup: 200 };
+  const p1: Producer = {
+    id: uid("pr"), name: "John Wick", rate: 650, markup: 150,
+    rateHistory: [{ id: uid("re"), rate: 650, markup: 150, effectiveFrom: "2025-01-01", lastModified: nowISO() }],
+  };
+  const p2: Producer = {
+    id: uid("pr"), name: "Samira El Amrani", rate: 600, markup: 200,
+    rateHistory: [{ id: uid("re"), rate: 600, markup: 200, effectiveFrom: "2025-01-01", lastModified: nowISO() }],
+  };
 
   const po1: PO = {
     id: uid("po"),
@@ -20,8 +25,8 @@ function seedStore(): StoreV1 {
     status: "draft",
     price: 0,
     sessions: [
-      { id: uid("se"), date: addDaysISO(todayISO(), 7), producerId: p1.id, units: 1 },
-      { id: uid("se"), date: addDaysISO(todayISO(), 14), producerId: p1.id, units: 1 },
+      { id: uid("se"), date: addDaysISO(todayISO(), 7), producerId: p1.id, units: 1, rate: p1.rate, markup: p1.markup },
+      { id: uid("se"), date: addDaysISO(todayISO(), 14), producerId: p1.id, units: 1, rate: p1.rate, markup: p1.markup },
     ],
   };
 
@@ -46,18 +51,57 @@ export function loadStore(): StoreV1 {
     ) {
       return seedStore();
     }
-    return migratePOs(parsed as StoreV1);
+    return migrateAll(parsed as StoreV1);
   } catch {
     return seedStore();
   }
 }
 
+function migrateProducers(store: StoreV1): StoreV1 {
+  const producers = store.producers.map((p) => {
+    const raw = p as unknown as Record<string, unknown>;
+    if (Array.isArray(raw["rateHistory"]) && (raw["rateHistory"] as unknown[]).length > 0) {
+      return p;
+    }
+    return {
+      ...p,
+      rateHistory: [{
+        id: uid("re"),
+        rate: p.rate,
+        markup: p.markup,
+        effectiveFrom: "2000-01-01",
+        lastModified: nowISO(),
+      }],
+    };
+  });
+  return { ...store, producers };
+}
+
 function migratePOs(store: StoreV1): StoreV1 {
+  const producerById = new Map(store.producers.map((p) => [p.id, p]));
+
   const pos = store.pos.map((po) => ({
     ...po,
     status: (po.status ?? "draft") as POStatus,
+    sessions: po.sessions.map((s) => {
+      // Backfill rate/markup from current producer if missing (pre-snapshot data)
+      const raw = s as unknown as Record<string, unknown>;
+      if (raw["rate"] === undefined || raw["rate"] === null) {
+        const producer = s.producerId ? producerById.get(s.producerId) : undefined;
+        return { ...s, rate: producer?.rate ?? 0, markup: producer?.markup ?? 0 };
+      }
+      return s;
+    }),
   }));
   return { ...store, pos };
+}
+
+function migrateAll(store: StoreV1): StoreV1 {
+  return migratePOs(migrateProducers(store));
+}
+
+export function migrateStore(store: StoreV1): StoreV1 {
+  return migrateAll(store);
 }
 
 export function saveStore(store: StoreV1): void {

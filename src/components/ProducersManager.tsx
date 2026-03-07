@@ -2,10 +2,12 @@ import { type FC, useState, useMemo } from "react";
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   IconButton,
   Paper,
   Stack,
@@ -25,8 +27,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import PeopleIcon from "@mui/icons-material/People";
 
-import type { Producer, ID } from "../types/index";
-import { uid, eur, clampNonNegative, parseNumber } from "../utils/helpers";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
+
+import type { Producer, RateEntry, ID } from "../types/index";
+import { uid, eur, clampNonNegative, parseNumber, todayISO, nowISO, currentRate } from "../utils/helpers";
 
 interface ProducersManagerProps {
   rows: Producer[];
@@ -44,16 +49,26 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
     return rows.filter((r) => r.name.toLowerCase().includes(q));
   }, [query, rows]);
 
+  function deriveTopLevel(producer: Producer): Producer {
+    const sorted = [...producer.rateHistory].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+    const latest = sorted[0];
+    return {
+      ...producer,
+      rate: latest ? clampNonNegative(latest.rate) : 0,
+      markup: latest ? clampNonNegative(latest.markup) : 0,
+      rateHistory: producer.rateHistory.map((e) => ({
+        ...e,
+        rate: clampNonNegative(e.rate),
+        markup: clampNonNegative(e.markup),
+      })),
+    };
+  }
+
   function upsert(entity: Producer): void {
     const name = entity.name.trim();
     if (!name) return;
 
-    const sanitized: Producer = {
-      ...entity,
-      name,
-      rate: clampNonNegative(entity.rate),
-      markup: clampNonNegative(entity.markup),
-    };
+    const sanitized = deriveTopLevel({ ...entity, name });
 
     onChange((prev) => {
       const i = prev.findIndex((p) => p.id === entity.id);
@@ -69,6 +84,47 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
   function remove(id: ID): void {
     onChange(rows.filter((r) => r.id !== id));
   }
+
+  function updateRateEntry(entryId: ID, patch: Partial<RateEntry>): void {
+    setEditing((p) => {
+      if (!p) return p;
+      return {
+        ...p,
+        rateHistory: p.rateHistory.map((e) =>
+          e.id === entryId ? { ...e, ...patch, lastModified: nowISO() } : e,
+        ),
+      };
+    });
+  }
+
+  function addRateEntry(): void {
+    setEditing((p) => {
+      if (!p) return p;
+      const latest = currentRate(p.rateHistory);
+      const entry: RateEntry = {
+        id: uid("re"),
+        rate: latest?.rate ?? 0,
+        markup: latest?.markup ?? 0,
+        effectiveFrom: todayISO(),
+        lastModified: nowISO(),
+      };
+      return { ...p, rateHistory: [...p.rateHistory, entry] };
+    });
+  }
+
+  function removeRateEntry(entryId: ID): void {
+    setEditing((p) => {
+      if (!p) return p;
+      return { ...p, rateHistory: p.rateHistory.filter((e) => e.id !== entryId) };
+    });
+  }
+
+  const sortedHistory = useMemo(() => {
+    if (!editing) return [];
+    return [...editing.rateHistory].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  }, [editing]);
+
+  const latestEntry = sortedHistory[0];
 
   return (
     <Box sx={{ p: 2 }}>
@@ -95,7 +151,19 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => {
-              setEditing({ id: uid("pr"), name: "", rate: 0, markup: 0 });
+              setEditing({
+                id: uid("pr"),
+                name: "",
+                rate: 0,
+                markup: 0,
+                rateHistory: [{
+                  id: uid("re"),
+                  rate: 0,
+                  markup: 0,
+                  effectiveFrom: todayISO(),
+                  lastModified: nowISO(),
+                }],
+              });
               setOpen(true);
             }}
           >
@@ -129,7 +197,14 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
             ) : (
               filtered.map((row) => (
                 <TableRow key={row.id} hover>
-                  <TableCell>{row.name}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <span>{row.name}</span>
+                      {row.rateHistory.length > 1 && (
+                        <Chip size="small" label={`${row.rateHistory.length} rates`} variant="outlined" />
+                      )}
+                    </Stack>
+                  </TableCell>
                   <TableCell align="right">{eur.format(row.rate)}</TableCell>
                   <TableCell align="right">{eur.format(row.markup)}</TableCell>
                   <TableCell align="right">{eur.format(row.rate + row.markup)}</TableCell>
@@ -158,7 +233,7 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
         </Table>
       </TableContainer>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{editing?.name ? "Edit producer" : "New producer"}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -169,36 +244,110 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
               onChange={(e) => setEditing((p) => (p ? { ...p, name: e.target.value } : p))}
               fullWidth
             />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField
-                label="Rate (EUR per unit)"
-                value={String(editing?.rate ?? 0)}
-                onChange={(e) =>
-                  setEditing((p) => (p ? { ...p, rate: parseNumber(e.target.value) } : p))
-                }
-                inputProps={{ inputMode: "decimal" }}
-                fullWidth
-              />
-              <TextField
-                label="Markup (EUR per unit)"
-                value={String(editing?.markup ?? 0)}
-                onChange={(e) =>
-                  setEditing((p) => (p ? { ...p, markup: parseNumber(e.target.value) } : p))
-                }
-                inputProps={{ inputMode: "decimal" }}
-                fullWidth
-              />
-            </Stack>
+
             <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Typography variant="subtitle2">Gross wage charged to customer</Typography>
+              <Typography variant="subtitle2">Current rate (from latest history entry)</Typography>
               <Typography variant="h6">
-                {eur.format(clampNonNegative(editing?.rate ?? 0) + clampNonNegative(editing?.markup ?? 0))}
+                {eur.format(clampNonNegative(latestEntry?.rate ?? 0) + clampNonNegative(latestEntry?.markup ?? 0))}
                 <Typography component="span" variant="body2" color="text.secondary">
-                  {" "}
-                  per unit
+                  {" "}per unit
+                  {latestEntry && (
+                    <> (rate {eur.format(latestEntry.rate)} + markup {eur.format(latestEntry.markup)})</>
+                  )}
                 </Typography>
               </Typography>
             </Paper>
+
+            <Divider />
+
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+              <Typography variant="subtitle2">Rate History</Typography>
+              <Button size="small" startIcon={<AddIcon />} onClick={addRateEntry}>
+                Add rate entry
+              </Button>
+            </Stack>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Effective from</TableCell>
+                    <TableCell>Rate (EUR)</TableCell>
+                    <TableCell>Markup (EUR)</TableCell>
+                    <TableCell>Gross</TableCell>
+                    <TableCell>Last modified</TableCell>
+                    <TableCell width={60} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sortedHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          No rate entries. Add one to set a rate.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedHistory.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell>
+                          <DatePicker
+                            value={entry.effectiveFrom ? dayjs(entry.effectiveFrom) : null}
+                            onChange={(v) => {
+                              const iso = v?.isValid() ? v.format("YYYY-MM-DD") : "";
+                              updateRateEntry(entry.id, { effectiveFrom: iso });
+                            }}
+                            slotProps={{ textField: { size: "small", sx: { minWidth: 150 } } }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={String(entry.rate)}
+                            onChange={(e) => updateRateEntry(entry.id, { rate: parseNumber(e.target.value) })}
+                            inputProps={{ inputMode: "decimal" }}
+                            sx={{ width: 100 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={String(entry.markup)}
+                            onChange={(e) => updateRateEntry(entry.id, { markup: parseNumber(e.target.value) })}
+                            inputProps={{ inputMode: "decimal" }}
+                            sx={{ width: 100 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {eur.format(clampNonNegative(entry.rate) + clampNonNegative(entry.markup))}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(entry.lastModified).toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title={sortedHistory.length <= 1 ? "Cannot remove last entry" : "Remove"}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => removeRateEntry(entry.id)}
+                                disabled={sortedHistory.length <= 1}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Stack>
         </DialogContent>
         <DialogActions>
