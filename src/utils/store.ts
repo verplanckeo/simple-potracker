@@ -25,8 +25,8 @@ function seedStore(): StoreV1 {
     status: "draft",
     price: 0,
     sessions: [
-      { id: uid("se"), date: addDaysISO(todayISO(), 7), producerId: p1.id, units: 1, rate: p1.rate, markup: p1.markup },
-      { id: uid("se"), date: addDaysISO(todayISO(), 14), producerId: p1.id, units: 1, rate: p1.rate, markup: p1.markup },
+      { id: uid("se"), date: addDaysISO(todayISO(), 7), producerId: p1.id, hours: 1, rate: p1.rate, markup: p1.markup },
+      { id: uid("se"), date: addDaysISO(todayISO(), 14), producerId: p1.id, hours: 1, rate: p1.rate, markup: p1.markup },
     ],
   };
 
@@ -84,8 +84,16 @@ function migratePOs(store: StoreV1): StoreV1 {
     ...po,
     status: (po.status ?? "draft") as POStatus,
     sessions: po.sessions.map((s) => {
-      // Backfill rate/markup from current producer if missing (pre-snapshot data)
       const raw = s as unknown as Record<string, unknown>;
+
+      // Migrate legacy "units" field to "hours"
+      if (raw["units"] !== undefined && raw["hours"] === undefined) {
+        const { units: _removed, ...rest } = raw;
+        raw["hours"] = _removed;
+        Object.assign(s, rest, { hours: _removed });
+      }
+
+      // Backfill rate/markup from current producer if missing (pre-snapshot data)
       if (raw["rate"] === undefined || raw["rate"] === null) {
         const producer = s.producerId ? producerById.get(s.producerId) : undefined;
         return { ...s, rate: producer?.rate ?? 0, markup: producer?.markup ?? 0 };

@@ -23,7 +23,7 @@ import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 
 import type { PO, Training, Customer, Producer, ID, POStatus } from "../../types/index";
 import { PO_STATUSES } from "../../types/index";
-import { eur, clampNonNegative, computePO, formatDateRange, safeName } from "../../utils/helpers";
+import { eur, clampNonNegative, computePO, safeName } from "../../utils/helpers";
 import { SessionsEditor } from "../sessions/SessionsEditor";
 
 interface POEditorDrawerProps {
@@ -82,7 +82,7 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
       ...(local.note?.trim() ? { note: local.note.trim() } : {}),
       sessions: local.sessions.map((s) => ({
         ...s,
-        units: clampNonNegative(s.units ?? 0),
+        hours: clampNonNegative(s.hours ?? 0),
         ...(s.note?.trim() ? { note: s.note.trim() } : {}),
       })),
     };
@@ -227,11 +227,22 @@ export const POEditorDrawer: FC<POEditorDrawerProps> = ({
                 </Box>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">
-                    Sessions
+                    Sessions ({computed.sessionCount})
                   </Typography>
-                  <Typography variant="body2">
-                    {computed.sessionCount} · {formatDateRange(computed.startDate, computed.endDate)}
-                  </Typography>
+                  {local.sessions.length === 0 ? (
+                    <Typography variant="body2">{"\u2014"}</Typography>
+                  ) : (
+                    <Stack spacing={0.25} sx={{ mt: 0.25 }}>
+                      {local.sessions.map((s) => {
+                        const p = s.producerId ? producerById.get(s.producerId) : undefined;
+                        return (
+                          <Typography key={s.id} variant="body2" sx={{ fontSize: "0.8rem" }}>
+                            {s.date || "No date"} · {s.hours}h{p ? ` · ${p.name}` : ""}
+                          </Typography>
+                        );
+                      })}
+                    </Stack>
+                  )}
                 </Box>
               </Stack>
               <Divider />

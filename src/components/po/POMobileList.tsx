@@ -160,6 +160,7 @@ export const POMobileList: FC<POMobileListProps> = ({
                   trainingName={safeName(trainingById, po.trainingId)}
                   customerName={safeName(customerById, po.customerId)}
                   producerNames={producerNameList}
+                  producers={producers}
                   computed={c}
                   dragDisabled={isSorting}
                   onEdit={() => onEdit(po)}

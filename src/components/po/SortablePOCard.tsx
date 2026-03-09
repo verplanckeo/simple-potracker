@@ -24,8 +24,8 @@ import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import type { PO, POComputed, POStatus } from "../../types/index";
-import { eur, formatDateRange } from "../../utils/helpers";
+import type { PO, POComputed, POStatus, Producer } from "../../types/index";
+import { eur } from "../../utils/helpers";
 import { SortHandle } from "../dnd/SortHandle";
 
 const STATUS_CHIP_COLOR: Record<POStatus, "default" | "info" | "success"> = {
@@ -45,6 +45,7 @@ interface SortablePOCardProps {
   trainingName: string;
   customerName: string;
   producerNames: string[];
+  producers: Producer[];
   computed: POComputed;
   dragDisabled?: boolean;
   onEdit: () => void;
@@ -58,6 +59,7 @@ export const SortablePOCard: FC<SortablePOCardProps> = ({
   trainingName,
   customerName,
   producerNames,
+  producers,
   computed,
   dragDisabled,
   onEdit,
@@ -151,15 +153,22 @@ export const SortablePOCard: FC<SortablePOCardProps> = ({
 
         {/* Row 3: meta + money */}
         <Stack direction="row" alignItems="center" sx={{ pl: 4.5 }}>
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="caption" color="text.secondary">
               {computed.sessionCount} session{computed.sessionCount !== 1 ? "s" : ""}
               {producerNames.length > 0 && ` · ${producerNames.join(", ")}`}
             </Typography>
-            {(computed.startDate || computed.endDate) && (
-              <Typography variant="caption" color="text.secondary" display="block">
-                {formatDateRange(computed.startDate, computed.endDate)}
-              </Typography>
+            {po.sessions.length > 0 && (
+              <Stack spacing={0} sx={{ mt: 0.25 }}>
+                {po.sessions.map((s) => {
+                  const p = s.producerId ? producers.find((pr) => pr.id === s.producerId) : undefined;
+                  return (
+                    <Typography key={s.id} variant="caption" color="text.secondary" noWrap>
+                      {s.date || "No date"} · {s.hours}h{p ? ` · ${p.name}` : ""}
+                    </Typography>
+                  );
+                })}
+              </Stack>
             )}
           </Box>
           <Stack alignItems="flex-end" sx={{ flexShrink: 0 }}>

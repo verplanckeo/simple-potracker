@@ -50,8 +50,8 @@ export const SessionCard: FC<SessionCardProps> = ({
   };
 
   const producer = session.producerId ? producerById.get(session.producerId) : undefined;
-  const units = clampNonNegative(session.units ?? 0);
-  const cost = session.producerId ? units * (clampNonNegative(session.rate) + clampNonNegative(session.markup)) : 0;
+  const hours = clampNonNegative(session.hours ?? 0);
+  const cost = session.producerId ? hours * (clampNonNegative(session.rate) + clampNonNegative(session.markup)) : 0;
   const expectedEntry = producer && session.date ? findActiveRate(producer.rateHistory, session.date) : undefined;
   const expectedRate = expectedEntry?.rate ?? producer?.rate ?? 0;
   const expectedMarkup = expectedEntry?.markup ?? producer?.markup ?? 0;
@@ -132,17 +132,22 @@ export const SessionCard: FC<SessionCardProps> = ({
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((p) => (
                   <MenuItem key={p.id} value={p.id}>
-                    {p.name} · {eur.format(p.rate + p.markup)}/unit
+                    {p.name} · {eur.format(p.rate + p.markup)}/hr
                   </MenuItem>
                 ))}
             </Select>
           </FormControl>
 
           <TextField
-            label="Units"
-            value={String(session.units)}
-            onChange={(e) => onChange({ ...session, units: parseNumber(e.target.value) })}
-            inputProps={{ inputMode: "decimal" }}
+            label="Hours"
+            type="number"
+            value={String(session.hours)}
+            onChange={(e) => {
+              const val = e.target.value;
+              const n = parseNumber(val);
+              onChange({ ...session, hours: Math.round(n * 100) / 100 });
+            }}
+            inputProps={{ min: 0, step: 0.25 }}
             fullWidth
           />
         </Stack>
@@ -163,16 +168,16 @@ export const SessionCard: FC<SessionCardProps> = ({
                 <strong>{eur.format(cost)}</strong>
                 {session.producerId && (
                   <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    ({eur.format(session.rate + session.markup)}/unit)
+                    ({eur.format(session.rate + session.markup)}/hr)
                   </Typography>
                 )}
               </Typography>
             </Paper>
             {hasRateDrift && producer && (
-              <Tooltip title={`Expected rate for this date is ${eur.format(expectedRate + expectedMarkup)}/unit. Click refresh to update.`}>
+              <Tooltip title={`Expected rate for this date is ${eur.format(expectedRate + expectedMarkup)}/hr. Click refresh to update.`}>
                 <Chip
                   size="small"
-                  label={`Rate locked · expected ${eur.format(expectedRate + expectedMarkup)}/unit`}
+                  label={`Rate locked · expected ${eur.format(expectedRate + expectedMarkup)}/hr`}
                   color="info"
                   variant="outlined"
                   onDelete={() => {

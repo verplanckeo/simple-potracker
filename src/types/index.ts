@@ -30,7 +30,7 @@ export interface Session {
   id: ID;
   date: string;
   producerId: ID | "";
-  units: number;
+  hours: number;
   rate: number;
   markup: number;
   note?: string;

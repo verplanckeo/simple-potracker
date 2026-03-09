@@ -104,7 +104,7 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
       const entry: RateEntry = {
         id: uid("re"),
         rate: latest?.rate ?? 0,
-        markup: latest?.markup ?? 0,
+        markup: 0,
         effectiveFrom: todayISO(),
         lastModified: nowISO(),
       };
@@ -178,8 +178,6 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell align="right">Rate</TableCell>
-              <TableCell align="right">Markup</TableCell>
-              <TableCell align="right">Gross charged</TableCell>
               <TableCell align="right" width={160}>
                 Actions
               </TableCell>
@@ -188,7 +186,7 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={3}>
                   <Typography variant="body2" color="text.secondary">
                     No producers.
                   </Typography>
@@ -206,8 +204,6 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
                     </Stack>
                   </TableCell>
                   <TableCell align="right">{eur.format(row.rate)}</TableCell>
-                  <TableCell align="right">{eur.format(row.markup)}</TableCell>
-                  <TableCell align="right">{eur.format(row.rate + row.markup)}</TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit">
                       <IconButton
@@ -248,12 +244,9 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Typography variant="subtitle2">Current rate (from latest history entry)</Typography>
               <Typography variant="h6">
-                {eur.format(clampNonNegative(latestEntry?.rate ?? 0) + clampNonNegative(latestEntry?.markup ?? 0))}
+                {eur.format(clampNonNegative(latestEntry?.rate ?? 0))}
                 <Typography component="span" variant="body2" color="text.secondary">
-                  {" "}per unit
-                  {latestEntry && (
-                    <> (rate {eur.format(latestEntry.rate)} + markup {eur.format(latestEntry.markup)})</>
-                  )}
+                  {" "}per hour
                 </Typography>
               </Typography>
             </Paper>
@@ -273,8 +266,6 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
                   <TableRow>
                     <TableCell>Effective from</TableCell>
                     <TableCell>Rate (EUR)</TableCell>
-                    <TableCell>Markup (EUR)</TableCell>
-                    <TableCell>Gross</TableCell>
                     <TableCell>Last modified</TableCell>
                     <TableCell width={60} />
                   </TableRow>
@@ -282,7 +273,7 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
                 <TableBody>
                   {sortedHistory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={4}>
                         <Typography variant="body2" color="text.secondary">
                           No rate entries. Add one to set a rate.
                         </Typography>
@@ -298,6 +289,7 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
                               const iso = v?.isValid() ? v.format("YYYY-MM-DD") : "";
                               updateRateEntry(entry.id, { effectiveFrom: iso });
                             }}
+                            format="DD/MM/YYYY"
                             slotProps={{ textField: { size: "small", sx: { minWidth: 150 } } }}
                           />
                         </TableCell>
@@ -309,20 +301,6 @@ export const ProducersManager: FC<ProducersManagerProps> = ({ rows, onChange }) 
                             inputProps={{ inputMode: "decimal" }}
                             sx={{ width: 100 }}
                           />
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            value={String(entry.markup)}
-                            onChange={(e) => updateRateEntry(entry.id, { markup: parseNumber(e.target.value) })}
-                            inputProps={{ inputMode: "decimal" }}
-                            sx={{ width: 100 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {eur.format(clampNonNegative(entry.rate) + clampNonNegative(entry.markup))}
-                          </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="caption" color="text.secondary">

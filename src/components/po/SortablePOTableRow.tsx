@@ -19,7 +19,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import type { PO, Producer, POComputed, POStatus } from "../../types/index";
-import { eur, formatDateRange } from "../../utils/helpers";
+import { eur } from "../../utils/helpers";
 import { SortHandle } from "../dnd/SortHandle";
 
 const STATUS_CHIP_COLOR: Record<POStatus, "default" | "info" | "success"> = {
@@ -206,11 +206,24 @@ export const SortablePOTableRow: FC<SortablePOTableRowProps> = ({
       </TableCell>
       <TableCell>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {computed.sessionCount}
+          {computed.sessionCount} session{computed.sessionCount !== 1 ? "s" : ""}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {formatDateRange(computed.startDate, computed.endDate)}
-        </Typography>
+        {po.sessions.length > 0 ? (
+          <Stack spacing={0}>
+            {po.sessions.map((s) => {
+              const p = s.producerId ? producers.find((pr) => pr.id === s.producerId) : undefined;
+              return (
+                <Typography key={s.id} variant="caption" color="text.secondary" noWrap>
+                  {s.date || "No date"} · {s.hours}h{p ? ` · ${p.name}` : ""}
+                </Typography>
+              );
+            })}
+          </Stack>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            {"\u2014"}
+          </Typography>
+        )}
       </TableCell>
       <TableCell align="right">
         <Typography variant="body2" sx={{ fontWeight: 700 }}>

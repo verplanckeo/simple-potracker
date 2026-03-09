@@ -72,9 +72,9 @@ export function computePO(po: PO, _producerById: Map<ID, Producer>): POComputed 
 
   for (const s of po.sessions) {
     if (!s.producerId) continue;
-    const units = clampNonNegative(s.units ?? 0);
+    const hours = clampNonNegative(s.hours ?? 0);
     // Rate and markup are snapshotted on the session at producer-assignment time
-    cost += units * (clampNonNegative(s.rate ?? 0) + clampNonNegative(s.markup ?? 0));
+    cost += hours * (clampNonNegative(s.rate ?? 0) + clampNonNegative(s.markup ?? 0));
     producerIdsSet.add(s.producerId);
   }
 
