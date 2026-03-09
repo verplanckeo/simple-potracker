@@ -297,18 +297,21 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
           </Box>
         </Stack>
 
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
           {/* Mobile filter button */}
           {!isDesktop && (
             <Badge badgeContent={activeFilterCount} color="primary">
-              <Button
-                variant="outlined"
-                startIcon={<FilterListIcon />}
-                onClick={() => setMobileFilterOpen(true)}
-                size="small"
-              >
-                Filters
-              </Button>
+              <Tooltip title="Filters">
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setMobileFilterOpen(true)}
+                  size="small"
+                  sx={{ whiteSpace: "nowrap", minWidth: { xs: "auto", sm: "auto" }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } } }}
+                >
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Filters</Box>
+                </Button>
+              </Tooltip>
             </Badge>
           )}
 
@@ -319,29 +322,35 @@ export const POsOverview: FC<POsOverviewProps> = ({ store, onChange, onToast, au
                 size="small"
                 startIcon={<ClearIcon />}
                 onClick={clearSort}
+                sx={{ whiteSpace: "nowrap", minWidth: { xs: "auto", sm: "auto" }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } } }}
               >
-                Clear sort
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Clear sort</Box>
               </Button>
             </Tooltip>
           )}
 
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<CalculateIcon />}
-            onClick={() => setRecalcDialogOpen(true)}
-          >
-            Recalculate
-          </Button>
+          <Tooltip title="Recalculate">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CalculateIcon />}
+              onClick={() => setRecalcDialogOpen(true)}
+              sx={{ whiteSpace: "nowrap", minWidth: { xs: "auto", sm: "auto" }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } } }}
+            >
+              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Recalculate</Box>
+            </Button>
+          </Tooltip>
 
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openNew}
-            sx={{ alignSelf: { xs: "stretch", md: "center" } }}
-          >
-            New PO
-          </Button>
+          <Tooltip title="New PO">
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openNew}
+              sx={{ whiteSpace: "nowrap", minWidth: { xs: "auto", sm: "auto" }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } } }}
+            >
+              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>New PO</Box>
+            </Button>
+          </Tooltip>
         </Stack>
       </Stack>
 

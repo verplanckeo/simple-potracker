@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run prebuild:local && vite",
     "build": "tsc -b && vite build",
-    "docker-build": "npm run prebuild:production && docker build -t simplepotracker:latest -t itigaidev.azurecr.io/simplepotracker:latest .",
+    "docker-build": "npm run prebuild:production && npm run build && docker build -t simplepotracker:latest -t itigaidev.azurecr.io/simplepotracker:latest .",
     "docker-push": "docker push itigaidev.azurecr.io/simplepotracker:latest",
     "docker-run": "docker run -p 8080:80 simplepotracker",
     "publish": "npm run docker-build && npm run docker-push",
