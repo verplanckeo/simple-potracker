@@ -18,6 +18,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
+
 import type { Session, Producer, ID } from "../../types/index";
 import { eur, clampNonNegative, parseNumber, findActiveRate } from "../../utils/helpers";
 import { SortHandle } from "../dnd/SortHandle";
@@ -90,12 +93,11 @@ export const SessionCard: FC<SessionCardProps> = ({
         </Stack>
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <TextField
+          <DatePicker
             label="Date"
-            type="date"
-            value={session.date}
-            onChange={(e) => {
-              const newDate = e.target.value;
+            value={session.date ? dayjs(session.date) : null}
+            onChange={(v) => {
+              const newDate = v?.isValid() ? v.format("YYYY-MM-DD") : "";
               const p = session.producerId ? producerById.get(session.producerId) : undefined;
               if (p && newDate) {
                 const entry = findActiveRate(p.rateHistory, newDate);
@@ -104,8 +106,8 @@ export const SessionCard: FC<SessionCardProps> = ({
                 onChange({ ...session, date: newDate });
               }
             }}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
+            format="DD/MM/YYYY"
+            slotProps={{ textField: { fullWidth: true } }}
           />
 
           <FormControl fullWidth>
